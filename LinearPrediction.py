@@ -1,3 +1,10 @@
+from pandas import DataFrame
+import numpy as np
+import matplotlib.pyplot as plt
+from keras.layers.core import Dense
+from keras.layers import LSTM
+from keras.models import Sequential
+from sklearn.preprocessing import MinMaxScaler
 # 数据缩放，在建模或者测试模型之前一定要缩放到 -1 到 1 之间，不然会影响建模精度
 def scale(train, test):
     # 根据训练数据建立缩放器
