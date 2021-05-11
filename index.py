@@ -4,10 +4,12 @@ from pandas import DataFrame
 import numpy as np
 import matplotlib.pyplot as plt
 
+from math import sqrt
 from keras.layers.core import Dense
 from keras.layers import LSTM
 from keras.models import Sequential
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 # In[2]
 # 获取数据
 names = [
@@ -111,8 +113,9 @@ def fit_lstm(train, batch_size, nb_epoch, neurons):
     for i in range(5):
       model = Sequential()
       # 添加LSTM层
+      # return_sequences设置为true，预测输出输出数量才能与输入数量一致
       model.add(LSTM(neurons, batch_input_shape=(
-          batch_size, X.shape[1], X.shape[2]), stateful=True))
+          batch_size, X.shape[1], X.shape[2]), stateful=True, return_sequences=True))
       model.add(Dense(1))  # 输出层1个node
       # 编译，损失函数mse+优化算法adam
       model.compile(loss='mae', optimizer='adam')
@@ -132,20 +135,12 @@ lstm_model_list = fit_lstm(train_scaled,1,100,4)
 test_X, test_Y = test_scaled[:, :-5], test_scaled[:, -5:]
 test_X = test_X.reshape(test_X.shape[0], 1, test_X.shape[1])
 
-
-def forcast_lstm(model, batch_size, X):
-  X = np.array(X).reshape(1, 1, X.shape[1])
-  yhat = model.predict(X, batch_size=batch_size)
-  return yhat[0, 0]
-
 # 对5个输出进行预测
 predict_y_list = list()
+
 for i in range(len(lstm_model_list)):
   model = lstm_model_list[i]
-  predictions = list()
-  for j in range(len(test_scaled)):
-    yhat = forcast_lstm(model, 1, test_X[j])
-    predictions.append(yhat)
+  predictions = model.predict(test_X,batch_size=1)
   if i==0:predict_y_list = predictions
   else: predict_y_list = np.column_stack((predict_y_list,predictions))
 print("--------数据预测结束----------")
@@ -158,15 +153,19 @@ def invert_scale(scaler, X, Y):
   inverted = scaler.inverse_transform(new_row)
   return inverted[:,-5:]
 test_x = test_X.reshape((test_X.shape[0], test_X.shape[2]))
-yhat_p = invert_scale(scaler,test_x,predict_y_list)
+predict_y = predict_y_list.reshape((predict_y_list.shape[0], predict_y_list.shape[1]))
+yhat_p = invert_scale(scaler,test_x,predict_y)
 
 # In[8]
 # 数据图像可视化展示
 for z in range(5):
+  rmse = sqrt(mean_squared_error(test_data[:, z-5], yhat_p[:, z]))
+  print('%s的RMSE: %.3f' %(names[15+z],rmse))
   plt.rcParams['font.sans-serif']=['SimHei']
   plt.rcParams['axes.unicode_minus']=False
   plt.plot(test_time,test_data[:, z-5],label=names[15+z]+"真实值")
   plt.plot(test_time,yhat_p[:, z],'r--',label=names[15+z]+"预测值")
   plt.legend()
   plt.show()
+
 # %%
