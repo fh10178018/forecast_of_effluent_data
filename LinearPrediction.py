@@ -1,4 +1,4 @@
-from pandas import DataFrame
+# 学习预测时，用线性做实验，单输入单输出
 import numpy as np
 import matplotlib.pyplot as plt
 from keras.layers.core import Dense
