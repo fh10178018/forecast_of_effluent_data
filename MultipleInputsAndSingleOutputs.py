@@ -1,4 +1,6 @@
+# 该测试采用模型设计模式为多输入单输出
 # In[1]
+from keras.utils.vis_utils import plot_model
 from pandas import read_csv
 from pandas import DataFrame
 import numpy as np
@@ -64,15 +66,16 @@ newData = DataFrame(newArray)
 
 
 def showNoiseReductionCurve(title):
-    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['font.sans-serif'] = ['simsun']
     plt.rcParams['axes.unicode_minus'] = False
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    ax.plot(data.loc[102:302, ["time"]], data.loc[102:302, [
-            title]], data.loc[102:302, ["time"]], newData.loc[102:302, [names.index(title)]])
-    ax.set_title(title + '的降噪处理')
+    ax.plot(data.loc[102:302, ["time"]],data.loc[102:302, [title]],label=title+"实际值")
+    ax.plot(data.loc[102:302, ["time"]], newData.loc[102:302, [names.index(title)]],'r--',label=title+"降噪值")
+    # ax.set_title(title + '的降噪处理')
     ax.set_xlabel('时间/s')
     ax.set_ylabel(title+"数据")
+    plt.legend()
     plt.show()
 
 
@@ -129,6 +132,9 @@ def fit_lstm(train, batch_size, nb_epoch, neurons):
     return model_list
 
 lstm_model_list = fit_lstm(train_scaled,1,100,4)
+
+print(lstm_model_list[0].summary()) # Summarize Model
+plot_model(lstm_model_list[0], to_file='model2.png',show_shapes=True)
 
 # In[7]
 # lstm模型预测
