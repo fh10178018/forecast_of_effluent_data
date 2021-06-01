@@ -12,6 +12,7 @@ from keras.layers import LSTM
 from keras.models import Sequential
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
+import time
 # In[2]
 # 获取数据
 names = [
@@ -108,6 +109,7 @@ scaler, train_scaled, test_scaled = scale(train_data,test_data)
 # In[6]
 # 建立lstm模型
 # 构建模型，采取的是多输入，单输出构建模型
+time_start=time.time() # 模型训练开始计算
 def fit_lstm(train, batch_size, nb_epoch, neurons):
     X, Y = train[:, :-5], train[:, -5:]
     #reshape输入为LSTM的输入格式 reshape input to be 3D [samples, timesteps, features]
@@ -127,11 +129,12 @@ def fit_lstm(train, batch_size, nb_epoch, neurons):
           model.fit(X, Y[:,i], epochs=1, batch_size=batch_size,
                     verbose=0, shuffle=False)
           model.reset_states()
-          print("当前模型计算次数："+str(j+1))
       model_list.append(model)
     return model_list
-
 lstm_model_list = fit_lstm(train_scaled,1,100,4)
+
+time_end=time.time() # 模型训练结束
+print('模型训练结束，总耗时'+ str(time_end-time_start)+"s")
 
 print(lstm_model_list[0].summary()) # Summarize Model
 plot_model(lstm_model_list[0], to_file='model2.png',show_shapes=True)
@@ -160,13 +163,17 @@ def invert_scale(scaler, X, Y):
   return inverted[:,-5:]
 test_x = test_X.reshape((test_X.shape[0], test_X.shape[2]))
 predict_y = predict_y_list.reshape((predict_y_list.shape[0], predict_y_list.shape[1]))
+rmseList = []
+# 在数据逆缩放之前就进行均方差计算，让数据之间有可比性
+for z in range(5):
+  rmseList.append(sqrt(mean_squared_error(test_Y[:, z-5], predict_y[:, z])))
+
 yhat_p = invert_scale(scaler,test_x,predict_y)
 
 # In[8]
 # 数据图像可视化展示
 for z in range(5):
-  rmse = sqrt(mean_squared_error(test_data[:, z-5], yhat_p[:, z]))
-  print('%s的RMSE: %.3f' %(names[15+z],rmse))
+  print('%s的RMSE: %.3f' %(names[15+z],rmseList[z]))
   plt.rcParams['font.sans-serif']=['SimHei']
   plt.rcParams['axes.unicode_minus']=False
   plt.plot(test_time,test_data[:, z-5],label=names[15+z]+"真实值")
