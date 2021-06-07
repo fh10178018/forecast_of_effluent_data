@@ -1,18 +1,16 @@
-# 该测试采用模型设计模式为多输入单输出的LSTM
+# 用BP神经网络进行测试
+
 # In[1]
-from keras.utils.vis_utils import plot_model
 from pandas import read_csv
 from pandas import DataFrame
 import numpy as np
 import matplotlib.pyplot as plt
-
+import time
 from math import sqrt
-from keras.layers.core import Dense
-from keras.layers import LSTM
-from keras.models import Sequential
+from BPNN import BPNN
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
-import time
+from keras.utils.vis_utils import plot_model
 # In[2]
 # 获取数据
 names = [
@@ -51,7 +49,7 @@ data = data.dropna()  # 缺失值直接删除
 eliminate = ["溶解态惰性有机物质","硝态氮","溶解态可生物降解有机氮","颗粒态可生物降解有机氮","异养微生物量","碱度"]
 # 删除不变化的列，减少输入
 data = data.drop(eliminate, axis=1)
-
+print(data)
 # 数据中值降噪
 array = np.array(data)
 arrayLength = len(array)
@@ -111,36 +109,18 @@ scaler, train_scaled, test_scaled = scale(train_data,test_data)
 # 建立lstm模型
 # 构建模型，采取的是多输入，单输出构建模型
 time_start=time.time() # 模型训练开始计算
-def fit_lstm(train, batch_size, nb_epoch, neurons):
-    X, Y = train[:, :-5], train[:, -5:]
-    #reshape输入为LSTM的输入格式 reshape input to be 3D [samples, timesteps, features]
-    X = X.reshape(X.shape[0], 1, X.shape[1])
-    print(train)
-    model_list = list()
-    for i in range(5):
-      model = Sequential()
-      # 添加LSTM层
-      # return_sequences设置为true，预测输出输出数量才能与输入数量一致
-      model.add(LSTM(neurons, batch_input_shape=(
-          batch_size, X.shape[1], X.shape[2]), stateful=True, return_sequences=True))
-      model.add(Dense(1))  # 输出层1个node
-      # 编译，损失函数mse+优化算法adam
-      model.compile(loss='mae', optimizer='adam')
-      for j in range(nb_epoch):
-          # 按照batch_size，一次读取batch_size个数据
-          model.fit(X, Y[:,i], epochs=1, batch_size=batch_size,
-                    verbose=0, shuffle=False)
-          model.reset_states()
-      model_list.append(model)
-    return model_list
-lstm_model_list = fit_lstm(train_scaled,1,1000,8)
+def fit_bp(X,Y):
+  X_len = len(X)
+  train_d = [[X[a], [Y[a]]] for a in range(0,X_len)]
+  bp1 =  BPNN(8, 9, 1)
+  bp1.train(train_d,1000)
+  return bp1
+tranX, trainY = train_scaled[:, :-5], train_scaled[:, -5:]
+
+model_list = [fit_bp(tranX,train_scaled[:,a]) for a in range(0,5)]
 
 time_end=time.time() # 模型训练结束
 print('模型训练结束，总耗时'+ str(time_end-time_start)+"s")
-
-print(lstm_model_list[0].summary()) # Summarize Model
-plot_model(lstm_model_list[0], to_file='model2.png',show_shapes=True)
-
 # In[7]
 # lstm模型预测
 test_X, test_Y = test_scaled[:, :-5], test_scaled[:, -5:]
@@ -149,11 +129,12 @@ test_X = test_X.reshape(test_X.shape[0], 1, test_X.shape[1])
 # 对5个输出进行预测
 predict_y_list = list()
 
-for i in range(len(lstm_model_list)):
-  model = lstm_model_list[i]
-  predictions = model.predict(test_X,batch_size=1)
+for i in range(len(model_list)):
+  model = model_list[i]
+  predictions = model.test(test_X)
   if i==0:predict_y_list = predictions
   else: predict_y_list = np.column_stack((predict_y_list,predictions))
+
 print("--------数据预测结束----------")
 # In[7]
 # 数据逆缩放
@@ -164,13 +145,14 @@ def invert_scale(scaler, X, Y):
   inverted = scaler.inverse_transform(new_row)
   return inverted[:,-5:]
 test_x = test_X.reshape((test_X.shape[0], test_X.shape[2]))
-predict_y = predict_y_list.reshape((predict_y_list.shape[0], predict_y_list.shape[1]))
+# predict_y = predictions.reshape((predictions.shape[0], predictions.shape[2]))
 rmseList = []
 # 在数据逆缩放之前就进行均方差计算，让数据之间有可比性
 for z in range(5):
-  rmseList.append(sqrt(mean_squared_error(test_Y[:, z-5], predict_y[:, z])))
+  rmseList.append(sqrt(mean_squared_error(test_Y[:, z-5], predict_y_list[:, z])))
 
-yhat_p = invert_scale(scaler,test_x,predict_y)
+# 数据逆缩放
+yhat_p = invert_scale(scaler,test_x,predict_y_list)
 
 # In[8]
 # 数据图像可视化展示

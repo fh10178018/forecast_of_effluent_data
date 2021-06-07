@@ -50,7 +50,6 @@ data = data.dropna()  # 缺失值直接删除
 eliminate = ["溶解态惰性有机物质","硝态氮","溶解态可生物降解有机氮","颗粒态可生物降解有机氮","异养微生物量","碱度"]
 # 删除不变化的列，减少输入
 data = data.drop(eliminate, axis=1)
-print(data)
 # 数据中值降噪
 array = np.array(data)
 arrayLength = len(array)
@@ -126,7 +125,7 @@ def fit_lstm(train, batch_size,nb_epoch, neurons):
               verbose=0, shuffle=False)
     return model
 
-model = fit_lstm(train_scaled,1,1000,8)
+model = fit_lstm(train_scaled,1,100,8)
 
 time_end=time.time() # 模型训练结束
 print('模型训练结束，总耗时'+ str(time_end-time_start)+"s")
